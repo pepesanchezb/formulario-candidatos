@@ -63,11 +63,13 @@ with col_logo:
     st.image("https://via.placeholder.com/80x80.png?text=LOGO", width=80)
 
 with col_title:
-    st.markdown("## 🛠️ Selección de Técnico Junior de Automatización con Python")
+    st.markdown("## 🛠️ Selección de Técnico Junior de Automatización con Python")
     st.markdown(
         "### Únete a nuestro equipo para crear soluciones de automatización "
         "y datos de alto impacto."
     )
+    # Nota graciosa
+    st.caption("_(Como ves en este formulario, claramente necesitamos un programador que nos ayude a mejorarlo 😅)_")
 
 st.markdown("---")
 
