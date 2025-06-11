@@ -11,15 +11,16 @@ from datetime import datetime
 from pathlib import Path
 
 ###############################################################################
-# ESTILOS RESPONSIVOS (MÓVIL ↔ DESKTOP)
+# CONFIGURACIÓN BÁSICA DE LA PÁGINA
 ###############################################################################
-# 1. Limitamos el ancho máximo del contenido para evitar líneas muy largas en
-#    desktop.
-# 2. Hacemos que las columnas se apilen verticalmente cuando el ancho de pantalla
-#    es pequeño (<600 px), lo que mejora la experiencia en móviles.
-#    Esto se hace modificando el estilo flex-box de los contenedores "column" que
-#    genera Streamlit internamente.
-# 3. Eliminamos el relleno superior para que haya algo más de espacio útil.
+st.set_page_config(
+    page_title="Selección de Candidatos · Automatización Python",
+    page_icon="🛠️",                 # Emoji como favicon
+    layout="centered",               # Diseño centrado para mejor legibilidad
+)
+
+###############################################################################
+# ESTILOS RESPONSIVOS (MÓVIL ↔ DESKTOP)
 ###############################################################################
 st.markdown(
     """
@@ -41,15 +42,6 @@ st.markdown(
     </style>
     """,
     unsafe_allow_html=True,
-)
-
-###############################################################################
-# CONFIGURACIÓN BÁSICA DE LA PÁGINA
-###############################################################################
-st.set_page_config(
-    page_title="Selección de Candidatos · Automatización Python",
-    page_icon="🛠️",                 # Emoji como favicon
-    layout="centered",               # Diseño centrado para mejor legibilidad
 )
 
 ###############################################################################
