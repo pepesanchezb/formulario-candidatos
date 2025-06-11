@@ -190,21 +190,31 @@ if enviar:
         # ------------------------------------------------------------
         if USE_GSHEET:
             try:
-                scopes = ["https://www.googleapis.com/auth/spreadsheets"]
-                creds  = Credentials.from_service_account_file(_CREDS_FILE, scopes=scopes)
-                gc     = gspread.authorize(creds)
-                sh     = gc.open_by_url(_GSHEET_URL)
-                try:
-                    ws = sh.worksheet(_GSHEET_TAB)
-                except gspread.WorksheetNotFound:
-                    # Crea la hoja si no existe
-                    ws = sh.add_worksheet(title=_GSHEET_TAB, rows="1000", cols="30")
+                # Reutiliza worksheet o cliente ya creados en credentials_gsheet
+                if hasattr(gcfg, "ws"):
+                    ws = gcfg.ws
+                else:
+                    if hasattr(gcfg, "gc"):
+                        gc = gcfg.gc
+                    else:
+                        scopes = ["https://www.googleapis.com/auth/spreadsheets"]
+                        creds  = Credentials.from_service_account_file(_CREDS_FILE, scopes=scopes)
+                        gc     = gspread.authorize(creds)
+
+                    sh = gc.open_by_url(_GSHEET_URL)
+
+                    try:
+                        ws = sh.worksheet(_GSHEET_TAB)
+                    except gspread.WorksheetNotFound:
+                        ws = sh.add_worksheet(title=_GSHEET_TAB, rows="1000", cols="30")
 
                 # Añade cabecera si la hoja está vacía
                 if ws.row_count == 0 or len(ws.get_all_values()) == 0:
                     ws.append_row(list(registro.keys()))
 
                 ws.append_row(list(registro.values()), value_input_option="USER_ENTERED")
+                fila = len(ws.get_all_values())
+                st.info(f"📝 Registro guardado en Google Sheets (fila {fila}). ¡Compruébalo en la pestaña '{_GSHEET_TAB}'!")
             except Exception as e:
                 st.warning(f"No se pudo guardar en Google Sheets: {e}")
 
