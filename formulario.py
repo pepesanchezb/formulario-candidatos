@@ -12,6 +12,8 @@ from pathlib import Path
 import gspread
 from google.oauth2.service_account import Credentials
 import os
+import json
+from typing import Any
 
 ###############################################################################
 # CONFIGURACIÓN BÁSICA DE LA PÁGINA
@@ -139,6 +141,14 @@ try:
 except Exception:
     USE_GSHEET = False  # No hay configuración → desactiva subida a GSheet
 
+# DEBUG inicial (maneja ausencia de secrets.toml en local)
+try:
+    has_gcp = 'GCP_KEY' in st.secrets
+except Exception:
+    has_gcp = False
+
+st.write("DEBUG – USE_GSHEET:", '✅' if has_gcp else '❌', USE_GSHEET)
+
 if enviar:
     errores = []
 
@@ -200,8 +210,20 @@ if enviar:
                     else:
                         scopes = ["https://www.googleapis.com/auth/spreadsheets"]
                         # Detecta credenciales de varias fuentes: st.secrets, variable de entorno o archivo
-                        if "GCP_KEY" in st.secrets:
-                            creds = Credentials.from_service_account_info(dict(st.secrets["GCP_KEY"]), scopes=scopes)
+                        try:
+                            secret_present = "GCP_KEY" in st.secrets
+                        except Exception:
+                            secret_present = False
+
+                        if secret_present:
+                            key_raw = st.secrets["GCP_KEY"]
+                            if isinstance(key_raw, str):
+                                key_dict = json.loads(key_raw)
+                            else:
+                                # st.secrets devuelve un objeto tipo config; conviértelo a dict
+                                key_dict = dict(key_raw)
+
+                            creds = Credentials.from_service_account_info(key_dict, scopes=scopes)
                         elif os.getenv("GOOGLE_APPLICATION_CREDENTIALS"):
                             creds = Credentials.from_service_account_file(os.getenv("GOOGLE_APPLICATION_CREDENTIALS"), scopes=scopes)
                         else:
