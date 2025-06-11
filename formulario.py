@@ -183,17 +183,3 @@ if enviar:
 ###############################################################################
 # BARRA LATERAL (OPCIONAL)
 ###############################################################################
-with st.sidebar:
-    st.markdown("## ℹ️ Sobre el puesto")
-    st.markdown(
-        "Buscamos una persona proactiva con buen dominio de *Python* y ganas "
-        "de crecer en proyectos de automatización, data pipelines y creación "
-        "de dashboards."
-    )
-    st.markdown("### ✉️ Contacto")
-    st.markdown("- **Email RR. HH.**: talento@ejemplo.com\n"
-                "- **Teléfono**: +34 600 123 456")
-    st.markdown("### 🌐 Nuestra web")
-    st.markdown("[https://www.ejemplo.com](https://www.ejemplo.com)")
-    st.markdown("---")
-    st.markdown("Made with ❤️ & Streamlit")
