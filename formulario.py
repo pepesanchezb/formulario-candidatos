@@ -220,6 +220,9 @@ if enviar:
                 if ws.row_count == 0 or len(ws.get_all_values()) == 0:
                     ws.append_row(list(registro.keys()))
 
+                # DEBUG: mostrar registro en logs y UI
+                st.write("DEBUG – registro a insertar:", registro)
+
                 ws.append_row(list(registro.values()), value_input_option="USER_ENTERED")
                 fila = len(ws.get_all_values())
                 st.info(f"📝 Registro guardado en Google Sheets (fila {fila}). ¡Compruébalo en la pestaña '{_GSHEET_TAB}'!")
