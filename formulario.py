@@ -57,11 +57,8 @@ with col_logo:
 with col_title:
     st.markdown("## 🛠️ Selección de Técnico Junior de Automatización con Python")
     st.markdown(
-        "### Únete a nuestro equipo para crear soluciones de automatización "
-        "y datos de alto impacto."
+        "Como ves en este formulario, claramente necesitamos un programador que nos ayude a mejorarlo 😅"
     )
-    # Nota graciosa
-    st.caption("_(Como ves en este formulario, claramente necesitamos un programador que nos ayude a mejorarlo 😅)_")
 
 st.markdown("---")
 
