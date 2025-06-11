@@ -9,6 +9,8 @@ import streamlit as st
 import pandas as pd
 from datetime import datetime
 from pathlib import Path
+import gspread
+from google.oauth2.service_account import Credentials
 
 ###############################################################################
 # CONFIGURACIÓN BÁSICA DE LA PÁGINA
@@ -126,6 +128,16 @@ with st.form(key="form_candidato"):
 ###############################################################################
 # VALIDACIÓN Y ALMACENAMIENTO
 ###############################################################################
+try:
+    from update_gsheet import credentials_gsheet as gcfg
+
+    _GSHEET_URL = gcfg.SHEET_URL
+    _GSHEET_TAB = "datos_formulario"  # pestaña dedicada a este formulario
+    _CREDS_FILE = gcfg.CREDS_FILE
+    USE_GSHEET = True
+except Exception:
+    USE_GSHEET = False  # No hay configuración → desactiva subida a GSheet
+
 if enviar:
     errores = []
 
@@ -172,6 +184,29 @@ if enviar:
 
         # Guardar CSV
         df.to_csv(csv_path, index=False)
+
+        # ------------------------------------------------------------
+        # GUARDAR TAMBIÉN EN GOOGLE SHEETS (si está configurado)
+        # ------------------------------------------------------------
+        if USE_GSHEET:
+            try:
+                scopes = ["https://www.googleapis.com/auth/spreadsheets"]
+                creds  = Credentials.from_service_account_file(_CREDS_FILE, scopes=scopes)
+                gc     = gspread.authorize(creds)
+                sh     = gc.open_by_url(_GSHEET_URL)
+                try:
+                    ws = sh.worksheet(_GSHEET_TAB)
+                except gspread.WorksheetNotFound:
+                    # Crea la hoja si no existe
+                    ws = sh.add_worksheet(title=_GSHEET_TAB, rows="1000", cols="30")
+
+                # Añade cabecera si la hoja está vacía
+                if ws.row_count == 0 or len(ws.get_all_values()) == 0:
+                    ws.append_row(list(registro.keys()))
+
+                ws.append_row(list(registro.values()), value_input_option="USER_ENTERED")
+            except Exception as e:
+                st.warning(f"No se pudo guardar en Google Sheets: {e}")
 
         # Confirmación al usuario
         st.success("✅ ¡Tu candidatura se ha enviado correctamente!")
