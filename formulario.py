@@ -11,6 +11,7 @@ from datetime import datetime
 from pathlib import Path
 import gspread
 from google.oauth2.service_account import Credentials
+import os
 
 ###############################################################################
 # CONFIGURACIÓN BÁSICA DE LA PÁGINA
@@ -198,8 +199,15 @@ if enviar:
                         gc = gcfg.gc
                     else:
                         scopes = ["https://www.googleapis.com/auth/spreadsheets"]
-                        creds  = Credentials.from_service_account_file(_CREDS_FILE, scopes=scopes)
-                        gc     = gspread.authorize(creds)
+                        # Detecta credenciales de varias fuentes: st.secrets, variable de entorno o archivo
+                        if "GCP_KEY" in st.secrets:
+                            creds = Credentials.from_service_account_info(dict(st.secrets["GCP_KEY"]), scopes=scopes)
+                        elif os.getenv("GOOGLE_APPLICATION_CREDENTIALS"):
+                            creds = Credentials.from_service_account_file(os.getenv("GOOGLE_APPLICATION_CREDENTIALS"), scopes=scopes)
+                        else:
+                            creds = Credentials.from_service_account_file(_CREDS_FILE, scopes=scopes)
+
+                        gc = gspread.authorize(creds)
 
                     sh = gc.open_by_url(_GSHEET_URL)
 
