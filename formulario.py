@@ -83,6 +83,7 @@ except Exception:
     _GSHEET_URL = "https://docs.google.com/spreadsheets/d/1s_t9QltoNXcob5_qBjgOeKZkCwDf4Rp6ntb3mP9mbWs/edit"
     _GSHEET_TAB = "datos_formulario"
     _CREDS_FILE = "jsonkeys.json"
+    gcfg = None  # asegura variable definida
     USE_GSHEET = True
 
 # DEBUG: muestra si hay secreto GCP_KEY y si la subida a GSheet está activa
@@ -91,6 +92,49 @@ try:
 except Exception:
     has_secret = False
 st.write("DEBUG – USE_GSHEET:", "✅" if has_secret else "❌", USE_GSHEET)
+
+###############################################################################
+# FUNCIONES AUXILIARES
+###############################################################################
+# Función auxiliar para cargar credenciales de Google Service Account
+# Prioridad: st.secrets → variable de entorno → archivo local
+def load_gcp_credentials(scopes: list[str]):
+    """Obtiene Credentials para gspread con prioridad:
+    1) st.secrets["GCP_KEY"]
+    2) variable de entorno GOOGLE_APPLICATION_CREDENTIALS
+    3) archivo local _CREDS_FILE
+    """
+
+    # 1) Secret en Streamlit Cloud (protegido en try/except por si no existe secrets.toml)
+    try:
+        key_raw = st.secrets["GCP_KEY"]  # puede lanzar StreamlitSecretNotFoundError
+    except Exception:
+        key_raw = None
+
+    if key_raw:
+        key_dict = json.loads(key_raw) if isinstance(key_raw, str) else dict(key_raw)
+        return Credentials.from_service_account_info(key_dict, scopes=scopes)
+
+    # 2) Variable de entorno con ruta a archivo
+    gcp_path = os.getenv("GOOGLE_APPLICATION_CREDENTIALS")
+    if gcp_path and Path(gcp_path).exists():
+        return Credentials.from_service_account_file(gcp_path, scopes=scopes)
+
+    # 3) Variable de entorno con JSON embebido (GCP_KEY_JSON o GCP_KEY)
+    gcp_json = os.getenv("GCP_KEY_JSON") or os.getenv("GCP_KEY")
+    if gcp_json:
+        try:
+            key_dict = json.loads(gcp_json)
+            return Credentials.from_service_account_info(key_dict, scopes=scopes)
+        except Exception:
+            pass
+
+    # 4) Archivo local
+    if Path(_CREDS_FILE).exists():
+        return Credentials.from_service_account_file(_CREDS_FILE, scopes=scopes)
+
+    # Ninguna fuente disponible → error explícito para depurar
+    raise FileNotFoundError("No se encontraron credenciales GCP en st.secrets, variables de entorno ni archivo local")
 
 ###############################################################################
 # FORMULARIO
@@ -208,26 +252,9 @@ if enviar:
         # ------------------------------------------------------------
         if USE_GSHEET:
             try:
-                # Usa cliente gspread cacheado solo si el módulo existe y define 'gc'
-                if 'gcfg' in globals() and getattr(gcfg, 'gc', None):
-                    gc = gcfg.gc
-                else:
-                    scopes = ["https://www.googleapis.com/auth/spreadsheets"]
-                    try:
-                        secret_present = "GCP_KEY" in st.secrets
-                    except Exception:
-                        secret_present = False
-
-                    if secret_present:
-                        key_raw = st.secrets["GCP_KEY"]
-                        key_dict = json.loads(key_raw) if isinstance(key_raw, str) else dict(key_raw)
-                        creds = Credentials.from_service_account_info(key_dict, scopes=scopes)
-                    elif os.getenv("GOOGLE_APPLICATION_CREDENTIALS"):
-                        creds = Credentials.from_service_account_file(os.getenv("GOOGLE_APPLICATION_CREDENTIALS"), scopes=scopes)
-                    else:
-                        creds = Credentials.from_service_account_file(_CREDS_FILE, scopes=scopes)
-
-                    gc = gspread.authorize(creds)
+                scopes = ["https://www.googleapis.com/auth/spreadsheets"]
+                creds = load_gcp_credentials(scopes)
+                gc = gspread.authorize(creds)
 
                 # Abrir spreadsheet y worksheet correctos
                 sh = gc.open_by_url(_GSHEET_URL)
