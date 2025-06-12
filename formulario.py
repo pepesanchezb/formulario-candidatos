@@ -208,9 +208,8 @@ if enviar:
         # ------------------------------------------------------------
         if USE_GSHEET:
             try:
-                # Usa cliente gspread existente si está disponible, pero abre SIEMPRE
-                # la worksheet 'datos_formulario' para evitar confundir con otras.
-                if hasattr(gcfg, "gc"):
+                # Usa cliente gspread cacheado solo si el módulo existe y define 'gc'
+                if 'gcfg' in globals() and getattr(gcfg, 'gc', None):
                     gc = gcfg.gc
                 else:
                     scopes = ["https://www.googleapis.com/auth/spreadsheets"]
