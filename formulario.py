@@ -13,6 +13,7 @@ import gspread
 from google.oauth2.service_account import Credentials
 import os
 import json
+import traceback
 from typing import Any
 
 ###############################################################################
@@ -248,6 +249,8 @@ if enviar:
                 st.info(f"📝 Registro guardado en Google Sheets (fila {fila}). ¡Compruébalo en la pestaña '{_GSHEET_TAB}'!")
             except Exception as e:
                 st.warning(f"No se pudo guardar en Google Sheets: {e}")
+                # Muestra traza completa para depuración temporal
+                st.text(traceback.format_exc())
 
         # Confirmación al usuario
         st.success("✅ ¡Tu candidatura se ha enviado correctamente!")
