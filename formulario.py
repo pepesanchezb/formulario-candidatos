@@ -68,6 +68,29 @@ with col_title:
 st.markdown("---")
 
 ###############################################################################
+# CONFIGURACIÓN GOOGLE SHEETS (global, fuera del formulario)
+###############################################################################
+try:
+    from update_gsheet import credentials_gsheet as gcfg
+    _GSHEET_URL = gcfg.SHEET_URL
+    _GSHEET_TAB = "datos_formulario"
+    _CREDS_FILE = gcfg.CREDS_FILE
+    USE_GSHEET = True
+except Exception:
+    # Fallback: usar valores por defecto si no se encuentra el módulo
+    _GSHEET_URL = "https://docs.google.com/spreadsheets/d/1s_t9QltoNXcob5_qBjgOeKZkCwDf4Rp6ntb3mP9mbWs/edit"
+    _GSHEET_TAB = "datos_formulario"
+    _CREDS_FILE = "jsonkeys.json"
+    USE_GSHEET = True
+
+# DEBUG: muestra si hay secreto GCP_KEY y si la subida a GSheet está activa
+try:
+    has_secret = "GCP_KEY" in st.secrets
+except Exception:
+    has_secret = False
+st.write("DEBUG – USE_GSHEET:", "✅" if has_secret else "❌", USE_GSHEET)
+
+###############################################################################
 # FORMULARIO
 ###############################################################################
 with st.form(key="form_candidato"):
@@ -131,24 +154,6 @@ with st.form(key="form_candidato"):
 ###############################################################################
 # VALIDACIÓN Y ALMACENAMIENTO
 ###############################################################################
-try:
-    from update_gsheet import credentials_gsheet as gcfg
-
-    _GSHEET_URL = gcfg.SHEET_URL
-    _GSHEET_TAB = "datos_formulario"  # pestaña dedicada a este formulario
-    _CREDS_FILE = gcfg.CREDS_FILE
-    USE_GSHEET = True
-except Exception:
-    USE_GSHEET = False  # No hay configuración → desactiva subida a GSheet
-
-# DEBUG inicial (maneja ausencia de secrets.toml en local)
-try:
-    has_gcp = 'GCP_KEY' in st.secrets
-except Exception:
-    has_gcp = False
-
-st.write("DEBUG – USE_GSHEET:", '✅' if has_gcp else '❌', USE_GSHEET)
-
 if enviar:
     errores = []
 
@@ -201,46 +206,39 @@ if enviar:
         # ------------------------------------------------------------
         if USE_GSHEET:
             try:
-                # Reutiliza worksheet o cliente ya creados en credentials_gsheet
-                if hasattr(gcfg, "ws"):
-                    ws = gcfg.ws
+                # Usa cliente gspread existente si está disponible, pero abre SIEMPRE
+                # la worksheet 'datos_formulario' para evitar confundir con otras.
+                if hasattr(gcfg, "gc"):
+                    gc = gcfg.gc
                 else:
-                    if hasattr(gcfg, "gc"):
-                        gc = gcfg.gc
-                    else:
-                        scopes = ["https://www.googleapis.com/auth/spreadsheets"]
-                        # Detecta credenciales de varias fuentes: st.secrets, variable de entorno o archivo
-                        try:
-                            secret_present = "GCP_KEY" in st.secrets
-                        except Exception:
-                            secret_present = False
-
-                        if secret_present:
-                            key_raw = st.secrets["GCP_KEY"]
-                            if isinstance(key_raw, str):
-                                key_dict = json.loads(key_raw)
-                            else:
-                                # st.secrets devuelve un objeto tipo config; conviértelo a dict
-                                key_dict = dict(key_raw)
-
-                            creds = Credentials.from_service_account_info(key_dict, scopes=scopes)
-                        elif os.getenv("GOOGLE_APPLICATION_CREDENTIALS"):
-                            creds = Credentials.from_service_account_file(os.getenv("GOOGLE_APPLICATION_CREDENTIALS"), scopes=scopes)
-                        else:
-                            creds = Credentials.from_service_account_file(_CREDS_FILE, scopes=scopes)
-
-                        gc = gspread.authorize(creds)
-
-                    sh = gc.open_by_url(_GSHEET_URL)
-
+                    scopes = ["https://www.googleapis.com/auth/spreadsheets"]
                     try:
-                        ws = sh.worksheet(_GSHEET_TAB)
-                    except gspread.WorksheetNotFound:
-                        ws = sh.add_worksheet(title=_GSHEET_TAB, rows="1000", cols="30")
+                        secret_present = "GCP_KEY" in st.secrets
+                    except Exception:
+                        secret_present = False
 
-                # Añade cabecera si la hoja está vacía
-                if ws.row_count == 0 or len(ws.get_all_values()) == 0:
-                    ws.append_row(list(registro.keys()))
+                    if secret_present:
+                        key_raw = st.secrets["GCP_KEY"]
+                        key_dict = json.loads(key_raw) if isinstance(key_raw, str) else dict(key_raw)
+                        creds = Credentials.from_service_account_info(key_dict, scopes=scopes)
+                    elif os.getenv("GOOGLE_APPLICATION_CREDENTIALS"):
+                        creds = Credentials.from_service_account_file(os.getenv("GOOGLE_APPLICATION_CREDENTIALS"), scopes=scopes)
+                    else:
+                        creds = Credentials.from_service_account_file(_CREDS_FILE, scopes=scopes)
+
+                    gc = gspread.authorize(creds)
+
+                # Abrir spreadsheet y worksheet correctos
+                sh = gc.open_by_url(_GSHEET_URL)
+                try:
+                    ws = sh.worksheet(_GSHEET_TAB)
+                except gspread.WorksheetNotFound:
+                    ws = sh.add_worksheet(title=_GSHEET_TAB, rows="1000", cols="30")
+
+                # Añade cabecera si la hoja está vacía o la primera fila está vacía
+                rows_existing = ws.get_all_values()
+                if not rows_existing or not any(rows_existing[0]):
+                    ws.insert_row(list(registro.keys()), 1)
 
                 # DEBUG: mostrar registro en logs y UI
                 st.write("DEBUG – registro a insertar:", registro)
